@@ -4,7 +4,7 @@ const { __ } = wp.i18n
 
 const {
     Notice,
-    Spinner,    
+    Spinner,
     Panel,
     PanelBody,
     PanelRow,
@@ -29,25 +29,32 @@ class App extends Component {
         this.state = {
             settingsLoaded: false,
             isSaving: false,
+            dataChanged: false,
             admin_react_example_bool_1: false,
-            admin_react_example_text_1: '', 
+            admin_react_example_text_1: '',
         }
     }
 
-    async componentDidMount() {
-        wp.api.loadPromise.then(() => {
-            this.settings = new wp.api.models.Settings()
+    componentDidMount() {
+      window.addEventListener('beforeunload', this.beforeUnload.bind(this))
 
-            if (this.state.settingsLoaded === false) {
-                this.settings.fetch().then(response => {
-                    this.setState({
-                        settingsLoaded: true,
-                        admin_react_example_bool_1: Boolean(response.admin_react_example_bool_1),
-                        admin_react_example_text_1: response.admin_react_example_text_1,
-                    })
-                })
-            }
-        })
+      wp.api.loadPromise.then(() => {
+          this.settings = new wp.api.models.Settings()
+
+          if (this.state.settingsLoaded === false) {
+              this.settings.fetch().then(response => {
+                  this.setState({
+                      settingsLoaded: true,
+                      admin_react_example_bool_1: Boolean(response.admin_react_example_bool_1),
+                      admin_react_example_text_1: response.admin_react_example_text_1,
+                  })
+              })
+          }
+      })
+    }
+
+    componentWillUnmount() {
+      window.removeEventListener('beforeunload', this.beforeUnload.bind(this))
     }
 
     changeSetting(setting, value) {
@@ -56,13 +63,23 @@ class App extends Component {
         const model = new wp.api.models.Settings({
             [setting]: value
         })
-        
+
         model.save().then(response => {
             this.setState({
                 [setting]: response[setting],
                 isSaving: false,
+                dataChanged: false,
             })
         })
+    }
+
+    beforeUnload(event) {
+      if (! this.state.dataChanged) {
+        return
+      }
+
+      event.preventDefault()
+      event.returnValue = true
     }
 
     render() {
@@ -80,7 +97,7 @@ class App extends Component {
                     <Panel header="React admin">
                         <PanelBody title="Example settings">
                             <PanelRow>
-                                <ToggleControl 
+                                <ToggleControl
                                     label="Example setting 1"
                                     help="Example boolean setting"
                                     checked={ this.state.admin_react_example_bool_1 }
@@ -96,9 +113,9 @@ class App extends Component {
                                     label="Example text setting 1"
                                     help="Example simple input"
                                 >
-                                    <TextControl 
-                                        value={ this.state.admin_react_example_text_1 } 
-                                        onChange={ value => this.setState({admin_react_example_text_1: value})}
+                                    <TextControl
+                                        value={ this.state.admin_react_example_text_1 }
+                                        onChange={ value => this.setState({admin_react_example_text_1: value, dataChanged: true})}
                                         disabled={ this.state.isSaving }
                                     />
                                 </BaseControl>
@@ -109,7 +126,7 @@ class App extends Component {
                                     isPrimary
                                     isLarge
                                     onClick={ () => this.changeSetting('admin_react_example_text_1', this.state.admin_react_example_text_1) }
-                                    disabled={ this.state.isSaving }
+                                    disabled={ this.state.isSaving || ! this.state.dataChanged }
                                     >Save</Button>
                             </PanelRow>
                         </PanelBody>
